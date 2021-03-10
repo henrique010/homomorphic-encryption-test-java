@@ -2,53 +2,48 @@ package client;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.net.Socket;
+import java.net.UnknownHostException;
 
 import encryption.KeyPair;
 import encryption.KeyPairBuilder;
 import encryption.PublicKey;
-import shared.Message;
+import shared.TransferMethod;
+import shared.Param;
 import shared.SocketHandler;
 
 public class ClientSocketTest {
-	private static Socket socket;
+	private KeyPair keyPair;
+	private PublicKey publicKey; 
 	
-	public static Socket initializeClient() {
-		try {
-			socket = new Socket("127.0.0.1", 3333);
-			
-			return socket;
-			
-		} catch (Exception e) {
-			throw new Error("Client initialize error: "+ e.getMessage());
-		}
+	public ClientSocketTest() {
+		this.keyPair = new KeyPairBuilder().generateKeyPair();
+		this.publicKey = keyPair.getPublicKey();
+	}
+
+	public BigInteger sumEncryptedNumbers(BigInteger numberOne, BigInteger numberTwo, BigInteger nSquared) {	
+		BigInteger resultEncrypted = numberOne
+				.multiply(numberTwo).mod(nSquared);
+		
+		return resultEncrypted;
 	}
 	
-	public static void sendMessage(String message) throws ClassNotFoundException {
+	public void invokeServerForSumNumbers(Socket socket) throws ClassNotFoundException {
 		try {
-			KeyPairBuilder keyGen = new KeyPairBuilder();
-			KeyPair keyPair = keyGen.generateKeyPair();
+			BigInteger encryptedNumberOne = this.publicKey.encrypt(BigInteger.valueOf(4));
+			BigInteger encryptedNumberTwo = this.publicKey.encrypt(BigInteger.valueOf(10));
 			
-			PublicKey publicKey = keyPair.getPublicKey();
-			
-			BigInteger plainA = BigInteger.valueOf(4);
-			BigInteger plainB = BigInteger.valueOf(10);
-
-			BigInteger encryptedA = publicKey.encrypt(plainA);
-			BigInteger encryptedB = publicKey.encrypt(plainB);
-
-			Message sendData = new Message(encryptedA, encryptedB, publicKey.getnSquared());
+			TransferMethod sendData = new TransferMethod("sumEncryptedNumbers");
+			sendData.setParam(new Param("numberOne", encryptedNumberOne));
+			sendData.setParam(new Param("numberTwo", encryptedNumberTwo));
+			sendData.setParam(new Param("nSquared", this.publicKey.getnSquared()));
 			
 			SocketHandler socketHandler = new SocketHandler(socket);
 			socketHandler.sendMessage(sendData);
 			
 			BigInteger serverResponse = (BigInteger) socketHandler.getMessage();
-			
 			BigInteger additionResultDecrypted = keyPair.decrypt(serverResponse);
 			
-			System.out.println("Server Decrypted Result: "+additionResultDecrypted);
-			
-			socket.close();
-		
+			System.out.println("Server Decrypted Result: "+additionResultDecrypted);	
 		} catch (IOException e) {
 			System.out.println("Send message error: "+e.getMessage());
 		}

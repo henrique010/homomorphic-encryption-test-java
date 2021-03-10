@@ -1,18 +1,20 @@
 package server;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.math.BigInteger;
 import java.net.ServerSocket;
 import java.net.Socket;
 
-import shared.Message;
+import client.ClientSocketTest;
+import shared.TransferMethod;
 import shared.SocketHandler;
 
 public class ServerSocketTest {
 
-	public static void main(String[] args) throws ClassNotFoundException {
+	public static void main(String[] args) throws ClassNotFoundException, NoSuchMethodException, SecurityException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
 		try {
-			// cria servidor
 			ServerSocket server = new ServerSocket(3333);
 			
 			System.out.println("Server running on port 3333");
@@ -20,13 +22,26 @@ public class ServerSocketTest {
 			Socket socket = server.accept();
 			System.out.println("Client IP: "+socket.getInetAddress());
 			
-			// recebe a request do cliente e realiza a operação de soma
 			SocketHandler socketHandler = new SocketHandler(socket);
 			
-			Message requestData = (Message) socketHandler.getMessage();
+			TransferMethod requestData = (TransferMethod) socketHandler.getMessage();
 			
-			BigInteger resultEncrypted = requestData.getNumberOne()
-					.multiply(requestData.getNumberTwo()).mod(requestData.getPublicKeyNSquared());
+			ClientSocketTest client = new ClientSocketTest();
+			Class<?> clientClass = client.getClass();
+			
+			Method sumEncryptedNumbers = clientClass.getDeclaredMethod(
+					requestData.getMethodName(),
+					BigInteger.class,
+					BigInteger.class,
+					BigInteger.class
+			);
+			
+			Object resultEncrypted = sumEncryptedNumbers.invoke(
+					client, 
+					requestData.getParam(0).getValue(), 
+					requestData.getParam(1).getValue(),
+					requestData.getParam(2).getValue()
+			);
 			
 			socketHandler.sendMessage(resultEncrypted);
 			

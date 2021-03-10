@@ -10,7 +10,6 @@ public class SocketHandler {
 	private ObjectInputStream input;
 	
 	public SocketHandler(Socket socket) throws IOException {
-		super();
 		this.output = new ObjectOutputStream(socket.getOutputStream());
 		this.input = new ObjectInputStream(socket.getInputStream());
 	}
